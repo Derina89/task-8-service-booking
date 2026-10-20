@@ -12,17 +12,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // PostgreSQL connection
+
 const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false,
 });
 
-// Middleware
+ // Middleware
+app.set('trust proxy', 1);
+
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true
 }));
 
@@ -35,9 +37,12 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
         maxAge: 60 * 60 * 1000
     }
 }));
+
 
 // Serve frontend files
 app.use(express.static(path.join(__dirname, 'public')));
