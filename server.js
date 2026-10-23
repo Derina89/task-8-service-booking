@@ -201,6 +201,69 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+
+ // Get logged-in user's profile
+app.get('/api/profile', async (req, res) => {
+    try {
+        if (!req.session.userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Please login to continue.'
+            });
+        }
+
+        const result = await pool.query(
+            'SELECT id, name, email FROM users WHERE id = $1',
+            [req.session.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found.'
+            });
+        }
+
+        res.json({
+            success: true,
+            user: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Profile error:', error.message);
+
+        res.status(500).json({
+            success: false,
+            message: 'Unable to load profile.'
+        });
+    }
+});
+
+// Logout user
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((error) => {
+        if (error) {
+            console.error('Logout error:', error.message);
+
+            return res.status(500).json({
+                success: false,
+                message: 'Unable to logout.'
+            });
+        }
+
+        res.clearCookie('connect.sid', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none'
+        });
+
+        res.json({
+            success: true,
+            message: 'Logout successful.'
+        });
+    });
+});
+
+
 // Protect routes that require login
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
